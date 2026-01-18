@@ -1,0 +1,49 @@
+name: 네이버 카페 자동 게시
+
+on:
+  schedule:
+    # 매일 오전 00시 00분 (한국 시간, KST)
+    # GitHub Actions는 UTC 기준이므로, KST 00:30 = UTC 15:30
+    # cron 형식: 분 시 일 월 요일
+    - cron: "0 15 * * *"
+  workflow_dispatch: # 수동 실행도 가능하도록
+
+jobs:
+  auto-post:
+    name: 네이버 카페 자동 게시
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 의존성 설치
+        working-directory: ./workflows
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --production || npm install --production
+          else
+            npm install --production
+          fi
+
+      - name: 네이버 카페 자동 게시 실행
+        working-directory: ./workflows
+        env:
+          PFLOW_BASE_URL: ${{ secrets.PFLOW_BASE_URL || 'https://pflow.app' }}
+          # 필요한 다른 환경 변수들도 여기에 추가
+          # 예: NAVER_CLIENT_ID, NAVER_CLIENT_SECRET 등
+        run: |
+          node index.js || {
+            echo "❌ 자동 게시 작업 실패"
+            exit 1
+          }
+
+      - name: 작업 완료
+        if: success()
+        run: |
+          echo "✅ 자동 게시 작업 완료"
