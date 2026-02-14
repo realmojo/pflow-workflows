@@ -26,7 +26,6 @@ const accounts = [
 const isTestMode = process.argv.includes("--test");
 // const isDomesticOnly = process.argv.includes("--d"); // 국내주식만
 // const isWorldOnly = process.argv.includes("--w"); // 미국주식만
-// const isRealEstateOnly = process.argv.includes("--r"); // 부동산만
 // const isCryptoOnly = process.argv.includes("--c"); // 크립토만
 
 // clubId 설정 (--test 모드일 때는 테스트용 clubId 사용)
@@ -60,38 +59,6 @@ const TOP10_CRYPTO_CODES = [
   "KRW-ADA", // 에이다
   "KRW-BCH", // 비트코인캐시
 ];
-
-// 지역 코드 매핑 (지역 코드: { 이름, 코드, 메뉴 ID })
-// --test 모드일 때는 모든 메뉴 ID를 1로 설정
-const REGION_MAP_BASE = {
-  1100000000: { name: "서울시", code: "1100000000", menuId: 8 },
-  4100000000: { name: "경기도", code: "4100000000", menuId: 9 },
-  2800000000: { name: "인천시", code: "2800000000", menuId: 10 },
-  2600000000: { name: "부산시", code: "2600000000", menuId: 11 },
-  3000000000: { name: "대전시", code: "3000000000", menuId: 12 },
-  2700000000: { name: "대구시", code: "2700000000", menuId: 13 },
-  3100000000: { name: "울산시", code: "3100000000", menuId: 14 },
-  3600000000: { name: "세종시", code: "3600000000", menuId: 15 },
-  2900000000: { name: "광주시", code: "2900000000", menuId: 16 },
-  5100000000: { name: "강원도", code: "5100000000", menuId: 17 },
-  4300000000: { name: "충청북도", code: "4300000000", menuId: 18 },
-  4400000000: { name: "충청남도", code: "4400000000", menuId: 26 },
-  4700000000: { name: "경상북도", code: "4700000000", menuId: 27 },
-  4800000000: { name: "경상남도", code: "4800000000", menuId: 19 },
-  5200000000: { name: "전라북도", code: "5200000000", menuId: 28 },
-  4600000000: { name: "전라남도", code: "4600000000", menuId: 20 },
-  5000000000: { name: "제주도", code: "5000000000", menuId: 21 },
-};
-
-// --test 모드일 때는 모든 메뉴 ID를 1로 설정
-const REGION_MAP = isTestMode
-  ? Object.fromEntries(
-      Object.entries(REGION_MAP_BASE).map(([key, value]) => [
-        key,
-        { ...value, menuId: 1 },
-      ]),
-    )
-  : REGION_MAP_BASE;
 
 /**
  * 네이버 토큰 갱신 (계정별)
@@ -138,31 +105,6 @@ async function refreshNaverTokenForAccount(refreshTokenValue) {
 }
 
 /**
- * 상위 50개 부동산 목록 가져오기
- */
-async function getTop50RealEstate(regionCode, baseUrl) {
-  const url = `${baseUrl}/api/getRecentApartmentList?legalDivisionNumber=${regionCode}&size=50`;
-
-  console.log(`[부동산] 상위 50개 부동산 목록 가져오기: ${url}`);
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `부동산 목록 가져오기 실패: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  const data = await response.json();
-  return data || [];
-}
-
-/**
  * 배열 랜덤 섞기 (Fisher-Yates 알고리즘)
  */
 function shuffleArray(array) {
@@ -172,44 +114,6 @@ function shuffleArray(array) {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
-}
-
-/**
- * Pflow 콘텐츠 생성 API 호출 (개별 부동산)
- */
-async function generateRealEstateContent(complexNumber, baseUrl) {
-  const url = `${baseUrl}/api/pflow-content?type=realestate&code=${complexNumber}`;
-
-  console.log(`[부동산] 콘텐츠 생성 API 호출: ${url}`);
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    // 에러 응답 본문 읽기
-    let errorMessage = `${response.status} ${response.statusText}`;
-    let errorData = null;
-    try {
-      errorData = await response.json();
-      errorMessage = errorData.error || errorMessage;
-      console.error(
-        `[부동산] API 에러 응답:`,
-        JSON.stringify(errorData, null, 2),
-      );
-    } catch (e) {
-      // JSON 파싱 실패 시 기본 메시지 사용
-      const text = await response.text();
-      console.error(`[부동산] API 에러 응답 (텍스트):`, text);
-    }
-    throw new Error(`콘텐츠 생성 실패: ${errorMessage}`);
-  }
-
-  const data = await response.json();
-  return data;
 }
 
 /**
@@ -448,162 +352,8 @@ async function postToNaverCafe(
   }
 
   return data;
+  // return null;
 }
-
-/**
- * 부동산 지역 처리 (임시 주석처리)
- * 각 지역에서 20개씩 가져와서 모두 등록
- */
-// async function processRegion(
-//   regionCode,
-//   regionName,
-//   baseUrl,
-//   accessToken,
-//   clubId,
-//   menuId
-// ) {
-//   try {
-//     console.log(`\n========== [부동산 - ${regionName}] 처리 시작 ==========`);
-//     console.log(
-//       `[부동산 - ${regionName}] 해당 지역에서 50개 부동산 가져오기...`
-//     );
-
-//     // 1. 해당 지역에서 50개 부동산 가져오기
-//     const allRealEstates = await getTop50RealEstate(regionCode, baseUrl);
-
-//     if (!allRealEstates || allRealEstates.length === 0) {
-//       throw new Error(`${regionName} 부동산 목록을 가져올 수 없습니다.`);
-//     }
-
-//     console.log(
-//       `[부동산 - ${regionName}] ${allRealEstates.length}개 부동산 발견`
-//     );
-
-//     // 2. 랜덤으로 섞기
-//     const realEstates = shuffleArray(allRealEstates);
-//     console.log(`[부동산 - ${regionName}] 랜덤 섞기 완료`);
-
-//     // 3. 각 부동산에 대해 개별 콘텐츠 생성 및 게시
-//     const results = [];
-//     for (let i = 0; i < realEstates.length; i++) {
-//       const realEstate = realEstates[i];
-//       const complexNumber = realEstate.complexNumber;
-//       const complexName = realEstate.complexName || complexNumber;
-
-//       try {
-//         console.log(
-//           `[부동산 - ${regionName}] ${i + 1}/${
-//             realEstates.length
-//           } ${complexName}(${complexNumber}) 처리 중...`
-//         );
-
-//         // 개별 부동산 콘텐츠 생성
-//         const contentData = await generateRealEstateContent(
-//           complexNumber,
-//           baseUrl
-//         );
-
-//         if (!contentData.subject || !contentData.content) {
-//           throw new Error("콘텐츠 데이터가 없습니다.");
-//         }
-
-//         console.log(
-//           `[부동산 - ${regionName}] ${complexName} 콘텐츠 생성 완료!`
-//         );
-//         console.log(`제목: ${contentData.subject}`);
-//         console.log(`내용 길이: ${contentData.content.length}자`);
-
-//         // 콘텐츠 미리보기 (처음 200자)
-//         console.log(`\n내용 미리보기:`);
-//         console.log(contentData.content.substring(0, 200) + "...\n");
-
-//         // 네이버 카페에 게시
-//         if (clubId) {
-//           console.log(
-//             `[부동산 - ${regionName}] ${complexName} 네이버 카페 게시 시작... (메뉴 ID: ${menuId})`
-//           );
-//           const result = await postToNaverCafe(
-//             accessToken,
-//             clubId,
-//             menuId,
-//             contentData.subject,
-//             contentData.content
-//           );
-
-//           console.log(`[부동산 - ${regionName}] ${complexName} 게시 완료!`);
-//           console.log(`결과:`, JSON.stringify(result, null, 2));
-
-//           results.push({
-//             success: true,
-//             complexNumber,
-//             complexName,
-//             subject: contentData.subject,
-//             result,
-//           });
-
-//           // API Rate Limit 방지를 위한 딜레이 (각 부동산 게시 사이에 30초 대기)
-//           if (i < realEstates.length - 1) {
-//             console.log(
-//               `[부동산 - ${regionName}] 30초 대기 중... (${i + 1}/${
-//                 realEstates.length
-//               } 완료)`
-//             );
-//             await new Promise((resolve) => setTimeout(resolve, 30000));
-//           }
-//         } else {
-//           console.log(
-//             `[부동산 - ${regionName}] ${complexName} 네이버 카페 인증 정보가 없어 게시를 건너뜁니다.`
-//           );
-//           results.push({
-//             success: true,
-//             complexNumber,
-//             complexName,
-//             subject: contentData.subject,
-//             skipped: true,
-//           });
-//         }
-//       } catch (error) {
-//         console.error(
-//           `[부동산 - ${regionName}] ${complexName}(${complexNumber}) 처리 실패:`,
-//           error
-//         );
-//         results.push({
-//           success: false,
-//           complexNumber,
-//           complexName,
-//           error: error.message,
-//         });
-//       }
-//     }
-
-//     const successCount = results.filter((r) => r.success).length;
-//     const failCount = results.filter((r) => !r.success).length;
-
-//     console.log(
-//       `[부동산 - ${regionName}] 처리 완료: 성공 ${successCount}개, 실패 ${failCount}개`
-//     );
-
-//     return {
-//       success: true,
-//       type: "realestate",
-//       name: regionName,
-//       code: regionCode,
-//       total: realEstates.length,
-//       successCount,
-//       failCount,
-//       results,
-//     };
-//   } catch (error) {
-//     console.error(`[부동산 - ${regionName}] 처리 실패:`, error);
-//     return {
-//       success: false,
-//       type: "realestate",
-//       name: regionName,
-//       code: regionCode,
-//       error: error.message,
-//     };
-//   }
-// }
 
 /**
  * 주식 처리 (상위 20개를 각각 개별 게시글로 등록)
@@ -661,7 +411,7 @@ async function processStock(
 
         // 콘텐츠 미리보기 (처음 200자)
         console.log(`\n내용 미리보기:`);
-        console.log(contentData.content.substring(0, 200) + "...\n");
+        console.log(contentData.content.substring(0, 1000) + "...\n");
 
         // 네이버 카페에 게시
         if (clubId) {
@@ -892,7 +642,7 @@ async function processCryptoGroup(
 
       // 콘텐츠 미리보기 (처음 200자)
       console.log(`\n내용 미리보기:`);
-      console.log(contentData.content.substring(0, 200) + "...\n");
+      console.log(contentData.content.substring(0, 1000) + "...\n");
 
       // 네이버 카페에 게시
       if (clubId) {
@@ -980,11 +730,6 @@ async function main() {
     }, 크립토(TOP10): ${MENU_IDS.cryptoTop10}, 크립토(알트): ${
       MENU_IDS.cryptoAlt
     }${isTestMode ? " (테스트 모드: 모두 1)" : ""}`,
-  );
-  console.log(
-    `부동산 메뉴 ID: ${Object.values(REGION_MAP)
-      .map((r) => `${r.name}(${r.menuId})`)
-      .join(", ")}${isTestMode ? " (테스트 모드: 모두 1)" : ""}`,
   );
 
   if (baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1")) {
