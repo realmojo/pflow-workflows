@@ -12,10 +12,8 @@ const baseUrl = "https://pflow.app";
 
 const accounts = [
   {
-    id: "strikers1999",
-  },
-  {
     id: "sdfddf",
+    types: ["domestic", "world"], // 국내주식 + 미국주식 모두 처리
   },
   {
     id: "tedevspace",
@@ -772,10 +770,12 @@ async function main() {
       }
 
       const accountInfo = accountInfoData.data;
+      // account 설정에 types가 있으면 우선 사용, 없으면 DB의 type 사용
+      const accountTypes = account.types || [accountInfo.type];
       const accountType = accountInfo.type;
       const accountRefreshToken = accountInfo.refresh_token;
 
-      console.log(`[${account.id}] 계정 정보 조회 완료 (type: ${accountType})`);
+      console.log(`[${account.id}] 계정 정보 조회 완료 (type: ${accountTypes.join(", ")})`);
 
       // 2. refreshToken으로 새 accessToken 받아오기
       console.log(
@@ -821,95 +821,97 @@ async function main() {
 
       console.log(`[${account.id}] 토큰 저장 완료`);
 
-      // 4. 계정의 type에 따라 해당 로직 실행
+      // 4. 계정의 type에 따라 해당 로직 실행 (복수 타입 지원)
       const accountResults = [];
 
-      if (accountType === "domestic") {
-        console.log(`\n[${account.id}] 국내주식 처리 시작...`);
-        try {
-          const domesticResult = await processStock(
-            "domestic",
-            "국내주식",
-            baseUrl,
-            accountAccessToken,
-            clubId,
-          );
+      for (const type of accountTypes) {
+        if (type === "domestic") {
+          console.log(`\n[${account.id}] 국내주식 처리 시작...`);
+          try {
+            const domesticResult = await processStock(
+              "domestic",
+              "국내주식",
+              baseUrl,
+              accountAccessToken,
+              clubId,
+            );
+            accountResults.push({
+              accountId: account.id,
+              accountType: type,
+              ...domesticResult,
+            });
+          } catch (error) {
+            console.error(`[${account.id}] 국내주식 처리 실패:`, error);
+            accountResults.push({
+              accountId: account.id,
+              accountType: type,
+              success: false,
+              type: "stock",
+              name: "국내주식",
+              stockType: "domestic",
+              error: error.message,
+            });
+          }
+        } else if (type === "world") {
+          console.log(`\n[${account.id}] 미국주식 처리 시작...`);
+          try {
+            const worldResult = await processStock(
+              "world",
+              "미국주식",
+              baseUrl,
+              accountAccessToken,
+              clubId,
+            );
+            accountResults.push({
+              accountId: account.id,
+              accountType: type,
+              ...worldResult,
+            });
+          } catch (error) {
+            console.error(`[${account.id}] 미국주식 처리 실패:`, error);
+            accountResults.push({
+              accountId: account.id,
+              accountType: type,
+              success: false,
+              type: "stock",
+              name: "미국주식",
+              stockType: "world",
+              error: error.message,
+            });
+          }
+        } else if (type === "crypto") {
+          console.log(`\n[${account.id}] 크립토 처리 시작...`);
+          try {
+            const cryptoResult = await processCrypto(
+              baseUrl,
+              accountAccessToken,
+              clubId,
+            );
+            accountResults.push({
+              accountId: account.id,
+              accountType: type,
+              ...cryptoResult,
+            });
+          } catch (error) {
+            console.error(`[${account.id}] 크립토 처리 실패:`, error);
+            accountResults.push({
+              accountId: account.id,
+              accountType: type,
+              success: false,
+              type: "crypto",
+              name: "크립토",
+              error: error.message,
+            });
+          }
+        } else {
+          console.error(`[${account.id}] 알 수 없는 타입: ${type}`);
           accountResults.push({
             accountId: account.id,
-            accountType: accountType,
-            ...domesticResult,
-          });
-        } catch (error) {
-          console.error(`[${account.id}] 국내주식 처리 실패:`, error);
-          accountResults.push({
-            accountId: account.id,
-            accountType: accountType,
+            accountType: type,
             success: false,
-            type: "stock",
-            name: "국내주식",
-            stockType: "domestic",
-            error: error.message,
+            error: `알 수 없는 타입: ${type}`,
           });
         }
-      } else if (accountType === "world") {
-        console.log(`\n[${account.id}] 미국주식 처리 시작...`);
-        try {
-          const worldResult = await processStock(
-            "world",
-            "미국주식",
-            baseUrl,
-            accountAccessToken,
-            clubId,
-          );
-          accountResults.push({
-            accountId: account.id,
-            accountType: accountType,
-            ...worldResult,
-          });
-        } catch (error) {
-          console.error(`[${account.id}] 미국주식 처리 실패:`, error);
-          accountResults.push({
-            accountId: account.id,
-            accountType: accountType,
-            success: false,
-            type: "stock",
-            name: "미국주식",
-            stockType: "world",
-            error: error.message,
-          });
-        }
-      } else if (accountType === "crypto") {
-        console.log(`\n[${account.id}] 크립토 처리 시작...`);
-        try {
-          const cryptoResult = await processCrypto(
-            baseUrl,
-            accountAccessToken,
-            clubId,
-          );
-          accountResults.push({
-            accountId: account.id,
-            accountType: accountType,
-            ...cryptoResult,
-          });
-        } catch (error) {
-          console.error(`[${account.id}] 크립토 처리 실패:`, error);
-          accountResults.push({
-            accountId: account.id,
-            accountType: accountType,
-            success: false,
-            type: "crypto",
-            name: "크립토",
-            error: error.message,
-          });
-        }
-      } else {
-        console.error(`[${account.id}] 알 수 없는 타입: ${accountType}`);
-        accountResults.push({
-          accountId: account.id,
-          accountType: accountType,
-          success: false,
-          error: `알 수 없는 타입: ${accountType}`,
-        });
       }
 
       allResults.push(...accountResults);
