@@ -22,9 +22,9 @@ const accounts = [
 
 // 플래그 확인
 const isTestMode = process.argv.includes("--test");
-// const isDomesticOnly = process.argv.includes("--d"); // 국내주식만
-// const isWorldOnly = process.argv.includes("--w"); // 미국주식만
-// const isCryptoOnly = process.argv.includes("--c"); // 크립토만
+const isDomesticOnly = process.argv.includes("--d"); // 국내주식만
+const isWorldOnly = process.argv.includes("--w"); // 미국주식만
+const isCryptoOnly = process.argv.includes("--c"); // 크립토만
 
 // clubId 설정 (--test 모드일 때는 테스트용 clubId 사용)
 const clubId = isTestMode ? 31625508 : 31632186;
@@ -720,6 +720,9 @@ async function main() {
   if (isTestMode) {
     console.log("🧪 테스트 모드 활성화 (--test)");
   }
+  if (isDomesticOnly) console.log("🇰🇷 국내주식만 처리 (--d)");
+  if (isWorldOnly) console.log("🇺🇸 미국주식만 처리 (--w)");
+  if (isCryptoOnly) console.log("🪙 크립토만 처리 (--c)");
   console.log(`PFLOW_BASE_URL: ${baseUrl}`);
   console.log(`NAVER_CLUB_ID: ${clubId}${isTestMode ? " (테스트 모드)" : ""}`);
   console.log(
@@ -771,7 +774,17 @@ async function main() {
 
       const accountInfo = accountInfoData.data;
       // account 설정에 types가 있으면 우선 사용, 없으면 DB의 type 사용
-      const accountTypes = account.types || [accountInfo.type];
+      let accountTypes = account.types || [accountInfo.type];
+
+      // 플래그로 타입 필터링
+      if (isDomesticOnly || isWorldOnly || isCryptoOnly) {
+        accountTypes = accountTypes.filter((type) => {
+          if (isDomesticOnly && type === "domestic") return true;
+          if (isWorldOnly && type === "world") return true;
+          if (isCryptoOnly && type === "crypto") return true;
+          return false;
+        });
+      }
       const accountType = accountInfo.type;
       const accountRefreshToken = accountInfo.refresh_token;
 
