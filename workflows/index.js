@@ -461,13 +461,6 @@ async function processStock(
           });
         }
 
-        // API Rate Limit 방지를 위한 딜레이 (각 주식 게시 사이에 25초 대기)
-        if (i < stocks.length - 1) {
-          console.log(
-            `[${stockName}] 20초 대기 중... (${i + 1}/${stocks.length} 완료)`,
-          );
-          await new Promise((resolve) => setTimeout(resolve, 25000));
-        }
       } catch (error) {
         console.error(
           `[${stockName}] ${stockNameDisplay}(${stockCode}) 처리 실패:`,
@@ -479,6 +472,14 @@ async function processStock(
           stockName: stockNameDisplay,
           error: error.message,
         });
+      }
+
+      // API Rate Limit 방지를 위한 딜레이 (각 주식 게시 사이에 25초 대기)
+      if (i < stocks.length - 1) {
+        console.log(
+          `[${stockName}] 25초 대기 중... (${i + 1}/${stocks.length} 완료)`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 25000));
       }
     }
 
@@ -552,6 +553,10 @@ async function processCrypto(baseUrl, accessToken, clubId) {
       accessToken,
       clubId,
     );
+
+    // 크립토 그룹 간 전환 딜레이 (TOP10 → 알트코인)
+    console.log(`\n[크립토] 알트코인 처리 전 25초 대기...`);
+    await new Promise((resolve) => setTimeout(resolve, 25000));
 
     // 4. 알트코인 처리 (cryptoAlt 게시판)
     const altResults = await processCryptoGroup(
@@ -683,13 +688,6 @@ async function processCryptoGroup(
         });
       }
 
-      // API Rate Limit 방지를 위한 딜레이 (각 코인 게시 사이에 25초 대기)
-      if (i < cryptos.length - 1) {
-        console.log(
-          `[${groupName}] 20초 대기 중... (${i + 1}/${cryptos.length} 완료)`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, 25000));
-      }
     } catch (error) {
       console.error(
         `[${groupName}] ${cryptoNameDisplay}(${cryptoCode}) 처리 실패:`,
@@ -701,6 +699,14 @@ async function processCryptoGroup(
         cryptoName: cryptoNameDisplay,
         error: error.message,
       });
+    }
+
+    // API Rate Limit 방지를 위한 딜레이 (각 코인 게시 사이에 25초 대기)
+    if (i < cryptos.length - 1) {
+      console.log(
+        `[${groupName}] 25초 대기 중... (${i + 1}/${cryptos.length} 완료)`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 25000));
     }
   }
 
@@ -924,6 +930,14 @@ async function main() {
             success: false,
             error: `알 수 없는 타입: ${type}`,
           });
+        }
+
+        // 타입 간 전환 시 딜레이 (마지막 타입이 아니면 25초 대기)
+        if (accountTypes.indexOf(type) < accountTypes.length - 1) {
+          console.log(
+            `\n[${account.id}] 다음 타입으로 넘어가기 전 25초 대기...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 25000));
         }
       }
 
