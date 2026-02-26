@@ -12,11 +12,16 @@ const baseUrl = "https://pflow.app";
 
 const accounts = [
   {
+    id: "strikers1999",
+    types: ["domestic"],
+  },
+  {
     id: "sdfddf",
-    types: ["domestic", "world"], // 국내주식 + 미국주식 모두 처리
+    types: ["world"],
   },
   {
     id: "tedevspace",
+    types: ["crypto"],
   },
 ];
 
@@ -460,7 +465,6 @@ async function processStock(
             message: "네이버 카페 인증 정보 없음 - 콘텐츠만 생성됨",
           });
         }
-
       } catch (error) {
         console.error(
           `[${stockName}] ${stockNameDisplay}(${stockCode}) 처리 실패:`,
@@ -687,7 +691,6 @@ async function processCryptoGroup(
           message: "네이버 카페 인증 정보 없음 - 콘텐츠만 생성됨",
         });
       }
-
     } catch (error) {
       console.error(
         `[${groupName}] ${cryptoNameDisplay}(${cryptoCode}) 처리 실패:`,
@@ -791,10 +794,18 @@ async function main() {
           return false;
         });
       }
+
+      // 필터링 후 처리할 타입이 없으면 계정 스킵
+      if (accountTypes.length === 0) {
+        console.log(`[${account.id}] 처리할 타입이 없어 스킵합니다.`);
+        continue;
+      }
       const accountType = accountInfo.type;
       const accountRefreshToken = accountInfo.refresh_token;
 
-      console.log(`[${account.id}] 계정 정보 조회 완료 (type: ${accountTypes.join(", ")})`);
+      console.log(
+        `[${account.id}] 계정 정보 조회 완료 (type: ${accountTypes.join(", ")})`,
+      );
 
       // 2. refreshToken으로 새 accessToken 받아오기
       console.log(
