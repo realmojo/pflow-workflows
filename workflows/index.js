@@ -118,25 +118,43 @@ function shuffleArray(array) {
  * 상위 20개 주식 목록 가져오기
  */
 async function getTop20Stocks(stockType, baseUrl) {
-  const url = `${baseUrl}/api/getFavoriteList?type=${stockType}&size=20`;
+  // 1차: page=1, size=100
+  const url1 = `${baseUrl}/api/getFavoriteList?type=${stockType}&size=100&page=1`;
+  console.log(`[${stockType}] 주식 목록 가져오기 (1/2): ${url1}`);
 
-  console.log(`[${stockType}] 상위 20개 주식 목록 가져오기: ${url}`);
-
-  const response = await fetch(url, {
+  const response1 = await fetch(url1, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
   });
 
-  if (!response.ok) {
+  if (!response1.ok) {
     throw new Error(
-      `주식 목록 가져오기 실패: ${response.status} ${response.statusText}`,
+      `주식 목록 가져오기 실패 (1/2): ${response1.status} ${response1.statusText}`,
     );
   }
 
-  const data = await response.json();
-  return data || [];
+  const data1 = (await response1.json()) || [];
+
+  // 2차: page=2, size=50
+  const url2 = `${baseUrl}/api/getFavoriteList?type=${stockType}&size=50&page=2`;
+  console.log(`[${stockType}] 주식 목록 가져오기 (2/2): ${url2}`);
+
+  const response2 = await fetch(url2, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!response2.ok) {
+    throw new Error(
+      `주식 목록 가져오기 실패 (2/2): ${response2.status} ${response2.statusText}`,
+    );
+  }
+
+  const data2 = (await response2.json()) || [];
+
+  const combined = [...data1, ...data2];
+  console.log(`[${stockType}] 총 ${combined.length}개 주식 로드 (${data1.length} + ${data2.length})`);
+  return combined;
 }
 
 /**
@@ -460,7 +478,6 @@ async function processStock(
             message: "네이버 카페 인증 정보 없음 - 콘텐츠만 생성됨",
           });
         }
-
       } catch (error) {
         console.error(
           `[${stockName}] ${stockNameDisplay}(${stockCode}) 처리 실패:`,
@@ -687,7 +704,6 @@ async function processCryptoGroup(
           message: "네이버 카페 인증 정보 없음 - 콘텐츠만 생성됨",
         });
       }
-
     } catch (error) {
       console.error(
         `[${groupName}] ${cryptoNameDisplay}(${cryptoCode}) 처리 실패:`,
@@ -794,7 +810,9 @@ async function main() {
       const accountType = accountInfo.type;
       const accountRefreshToken = accountInfo.refresh_token;
 
-      console.log(`[${account.id}] 계정 정보 조회 완료 (type: ${accountTypes.join(", ")})`);
+      console.log(
+        `[${account.id}] 계정 정보 조회 완료 (type: ${accountTypes.join(", ")})`,
+      );
 
       // 2. refreshToken으로 새 accessToken 받아오기
       console.log(
