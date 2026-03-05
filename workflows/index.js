@@ -1,6 +1,6 @@
 /**
  * 로컬 테스트용 스크립트
- * 부동산 지역별, 국내주식 상위 20개, 미국주식 상위 20개 콘텐츠 생성 및 네이버 카페 게시 테스트
+ * 국내주식 상위 20개, 미국주식 상위 20개 콘텐츠 생성 및 네이버 카페 게시 테스트
  */
 
 // 환경 변수 로드 (dotenv 사용 시)
@@ -9,14 +9,17 @@
 // 환경 변수 설정 (로컬 테스트용)
 // 로컬에서 테스트하려면: PFLOW_BASE_URL=http://localhost:3000
 const baseUrl = "https://pflow.app";
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 const accounts = [
   {
-    id: "sdfddf",
-    types: ["domestic", "world"], // 국내주식 + 미국주식 모두 처리
+    id: "sdfddf", // 하이보르, 미국주식
   },
   {
-    id: "tedevspace",
+    id: "tedevspace", // 코인정보
+  },
+  {
+    id: "strikers1999", // 국내주식
   },
 ];
 
@@ -25,6 +28,8 @@ const isTestMode = process.argv.includes("--test");
 const isDomesticOnly = process.argv.includes("--d"); // 국내주식만
 const isWorldOnly = process.argv.includes("--w"); // 미국주식만
 const isCryptoOnly = process.argv.includes("--c"); // 크립토만
+const targetAccountId =
+  process.argv.find((arg) => arg.startsWith("--id="))?.split("=")[1] || null; // 특정 계정만
 
 // clubId 설정 (--test 모드일 때는 테스트용 clubId 사용)
 const clubId = isTestMode ? 31625508 : 31632186;
@@ -57,6 +62,40 @@ const TOP10_CRYPTO_CODES = [
   "KRW-ADA", // 에이다
   "KRW-BCH", // 비트코인캐시
 ];
+
+// 지역 코드 매핑 (지역 코드: { 이름, 코드, 메뉴 ID })
+// --test 모드일 때는 모든 메뉴 ID를 1로 설정
+const REGION_MAP_BASE = {
+  1100000000: { name: "서울시", code: "1100000000", menuId: 8 },
+  4100000000: { name: "경기도", code: "4100000000", menuId: 9 },
+  2800000000: { name: "인천시", code: "2800000000", menuId: 10 },
+  2600000000: { name: "부산시", code: "2600000000", menuId: 11 },
+  3000000000: { name: "대전시", code: "3000000000", menuId: 12 },
+  2700000000: { name: "대구시", code: "2700000000", menuId: 13 },
+  3100000000: { name: "울산시", code: "3100000000", menuId: 14 },
+  3600000000: { name: "세종시", code: "3600000000", menuId: 15 },
+  2900000000: { name: "광주시", code: "2900000000", menuId: 16 },
+  5100000000: { name: "강원도", code: "5100000000", menuId: 17 },
+  4300000000: { name: "충청북도", code: "4300000000", menuId: 18 },
+  4400000000: { name: "충청남도", code: "4400000000", menuId: 26 },
+  4700000000: { name: "경상북도", code: "4700000000", menuId: 27 },
+  4800000000: { name: "경상남도", code: "4800000000", menuId: 19 },
+  5200000000: { name: "전라북도", code: "5200000000", menuId: 28 },
+  4600000000: { name: "전라남도", code: "4600000000", menuId: 20 },
+  5000000000: { name: "제주도", code: "5000000000", menuId: 21 },
+};
+
+// --test 모드일 때는 모든 메뉴 ID를 1로 설정
+// 현재 사용하지 않음 (향후 지역별 카페 글쓰기 기능 구현 시 사용 예정)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const REGION_MAP = isTestMode
+  ? Object.fromEntries(
+      Object.entries(REGION_MAP_BASE).map(([key, value]) => [
+        key,
+        { ...value, menuId: 1 },
+      ]),
+    )
+  : REGION_MAP_BASE;
 
 /**
  * 네이버 토큰 갱신 (계정별)
@@ -105,6 +144,7 @@ async function refreshNaverTokenForAccount(refreshTokenValue) {
 /**
  * 배열 랜덤 섞기 (Fisher-Yates 알고리즘)
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function shuffleArray(array) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -118,43 +158,25 @@ function shuffleArray(array) {
  * 상위 20개 주식 목록 가져오기
  */
 async function getTop20Stocks(stockType, baseUrl) {
-  // 1차: page=1, size=100
-  const url1 = `${baseUrl}/api/getFavoriteList?type=${stockType}&size=100&page=1`;
-  console.log(`[${stockType}] 주식 목록 가져오기 (1/2): ${url1}`);
+  const url = `${baseUrl}/api/getFavoriteList?type=${stockType}&size=20`;
 
-  const response1 = await fetch(url1, {
+  console.log(`[${stockType}] 상위 20개 주식 목록 가져오기: ${url}`);
+
+  const response = await fetch(url, {
     method: "GET",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+    },
   });
 
-  if (!response1.ok) {
+  if (!response.ok) {
     throw new Error(
-      `주식 목록 가져오기 실패 (1/2): ${response1.status} ${response1.statusText}`,
+      `주식 목록 가져오기 실패: ${response.status} ${response.statusText}`,
     );
   }
 
-  const data1 = (await response1.json()) || [];
-
-  // 2차: page=2, size=50
-  const url2 = `${baseUrl}/api/getFavoriteList?type=${stockType}&size=50&page=2`;
-  console.log(`[${stockType}] 주식 목록 가져오기 (2/2): ${url2}`);
-
-  const response2 = await fetch(url2, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-  });
-
-  if (!response2.ok) {
-    throw new Error(
-      `주식 목록 가져오기 실패 (2/2): ${response2.status} ${response2.statusText}`,
-    );
-  }
-
-  const data2 = (await response2.json()) || [];
-
-  const combined = [...data1, ...data2];
-  console.log(`[${stockType}] 총 ${combined.length}개 주식 로드 (${data1.length} + ${data2.length})`);
-  return combined;
+  const data = await response.json();
+  return data || [];
 }
 
 /**
@@ -210,7 +232,7 @@ async function generateStockContent(stockCode, stockType, baseUrl) {
         `[${stockType}] API 에러 응답:`,
         JSON.stringify(errorData, null, 2),
       );
-    } catch (e) {
+    } catch {
       // JSON 파싱 실패 시 기본 메시지 사용
       const text = await response.text();
       console.error(`[${stockType}] API 에러 응답 (텍스트):`, text);
@@ -250,7 +272,7 @@ async function generateCryptoContent(cryptoCode, baseUrl) {
         `[크립토] API 에러 응답:`,
         JSON.stringify(errorData, null, 2),
       );
-    } catch (e) {
+    } catch {
       // JSON 파싱 실패 시 기본 메시지 사용
       const text = await response.text();
       console.error(`[크립토] API 에러 응답 (텍스트):`, text);
@@ -368,7 +390,6 @@ async function postToNaverCafe(
   }
 
   return data;
-  // return null;
 }
 
 /**
@@ -427,7 +448,7 @@ async function processStock(
 
         // 콘텐츠 미리보기 (처음 200자)
         console.log(`\n내용 미리보기:`);
-        console.log(contentData.content.substring(0, 1000) + "...\n");
+        console.log(contentData.content.substring(0, 200) + "...\n");
 
         // 네이버 카페에 게시
         if (clubId) {
@@ -478,6 +499,14 @@ async function processStock(
             message: "네이버 카페 인증 정보 없음 - 콘텐츠만 생성됨",
           });
         }
+
+        // API Rate Limit 방지를 위한 딜레이 (각 주식 게시 사이에 25초 대기)
+        if (i < stocks.length - 1) {
+          console.log(
+            `[${stockName}] 20초 대기 중... (${i + 1}/${stocks.length} 완료)`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 25000));
+        }
       } catch (error) {
         console.error(
           `[${stockName}] ${stockNameDisplay}(${stockCode}) 처리 실패:`,
@@ -489,14 +518,6 @@ async function processStock(
           stockName: stockNameDisplay,
           error: error.message,
         });
-      }
-
-      // API Rate Limit 방지를 위한 딜레이 (각 주식 게시 사이에 25초 대기)
-      if (i < stocks.length - 1) {
-        console.log(
-          `[${stockName}] 25초 대기 중... (${i + 1}/${stocks.length} 완료)`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, 25000));
       }
     }
 
@@ -570,10 +591,6 @@ async function processCrypto(baseUrl, accessToken, clubId) {
       accessToken,
       clubId,
     );
-
-    // 크립토 그룹 간 전환 딜레이 (TOP10 → 알트코인)
-    console.log(`\n[크립토] 알트코인 처리 전 25초 대기...`);
-    await new Promise((resolve) => setTimeout(resolve, 25000));
 
     // 4. 알트코인 처리 (cryptoAlt 게시판)
     const altResults = await processCryptoGroup(
@@ -662,7 +679,7 @@ async function processCryptoGroup(
 
       // 콘텐츠 미리보기 (처음 200자)
       console.log(`\n내용 미리보기:`);
-      console.log(contentData.content.substring(0, 1000) + "...\n");
+      console.log(contentData.content.substring(0, 200) + "...\n");
 
       // 네이버 카페에 게시
       if (clubId) {
@@ -704,6 +721,14 @@ async function processCryptoGroup(
           message: "네이버 카페 인증 정보 없음 - 콘텐츠만 생성됨",
         });
       }
+
+      // API Rate Limit 방지를 위한 딜레이 (각 코인 게시 사이에 25초 대기)
+      if (i < cryptos.length - 1) {
+        console.log(
+          `[${groupName}] 20초 대기 중... (${i + 1}/${cryptos.length} 완료)`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 25000));
+      }
     } catch (error) {
       console.error(
         `[${groupName}] ${cryptoNameDisplay}(${cryptoCode}) 처리 실패:`,
@@ -715,14 +740,6 @@ async function processCryptoGroup(
         cryptoName: cryptoNameDisplay,
         error: error.message,
       });
-    }
-
-    // API Rate Limit 방지를 위한 딜레이 (각 코인 게시 사이에 25초 대기)
-    if (i < cryptos.length - 1) {
-      console.log(
-        `[${groupName}] 25초 대기 중... (${i + 1}/${cryptos.length} 완료)`,
-      );
-      await new Promise((resolve) => setTimeout(resolve, 25000));
     }
   }
 
@@ -742,9 +759,8 @@ async function main() {
   if (isTestMode) {
     console.log("🧪 테스트 모드 활성화 (--test)");
   }
-  if (isDomesticOnly) console.log("🇰🇷 국내주식만 처리 (--d)");
-  if (isWorldOnly) console.log("🇺🇸 미국주식만 처리 (--w)");
-  if (isCryptoOnly) console.log("🪙 크립토만 처리 (--c)");
+  if (targetAccountId)
+    console.log(`🎯 특정 계정만 처리 (--id=${targetAccountId})`);
   console.log(`PFLOW_BASE_URL: ${baseUrl}`);
   console.log(`NAVER_CLUB_ID: ${clubId}${isTestMode ? " (테스트 모드)" : ""}`);
   console.log(
@@ -772,6 +788,13 @@ async function main() {
   // accounts 배열을 순회하면서 각 계정별로 처리
   for (let accountIndex = 0; accountIndex < accounts.length; accountIndex++) {
     const account = accounts[accountIndex];
+
+    // --id 플래그로 특정 계정만 처리
+    if (targetAccountId && account.id !== targetAccountId) {
+      console.log(`\n[${account.id}] --id 필터에 의해 건너뜀`);
+      continue;
+    }
+
     console.log(`\n${"=".repeat(60)}`);
     console.log(`계정 ${accountIndex + 1}/${accounts.length}: ${account.id}`);
     console.log("=".repeat(60));
@@ -795,24 +818,10 @@ async function main() {
       }
 
       const accountInfo = accountInfoData.data;
-      // account 설정에 types가 있으면 우선 사용, 없으면 DB의 type 사용
-      let accountTypes = account.types || [accountInfo.type];
-
-      // 플래그로 타입 필터링
-      if (isDomesticOnly || isWorldOnly || isCryptoOnly) {
-        accountTypes = accountTypes.filter((type) => {
-          if (isDomesticOnly && type === "domestic") return true;
-          if (isWorldOnly && type === "world") return true;
-          if (isCryptoOnly && type === "crypto") return true;
-          return false;
-        });
-      }
       const accountType = accountInfo.type;
       const accountRefreshToken = accountInfo.refresh_token;
 
-      console.log(
-        `[${account.id}] 계정 정보 조회 완료 (type: ${accountTypes.join(", ")})`,
-      );
+      console.log(`[${account.id}] 계정 정보 조회 완료 (type: ${accountType})`);
 
       // 2. refreshToken으로 새 accessToken 받아오기
       console.log(
@@ -858,105 +867,109 @@ async function main() {
 
       console.log(`[${account.id}] 토큰 저장 완료`);
 
-      // 4. 계정의 type에 따라 해당 로직 실행 (복수 타입 지원)
+      // 4. 플래그 필터링: --d, --w, --c 옵션이 있으면 해당 타입만 처리
+      if (isDomesticOnly || isWorldOnly || isCryptoOnly) {
+        const shouldProcess =
+          (isDomesticOnly && accountType === "domestic") ||
+          (isWorldOnly && accountType === "world") ||
+          (isCryptoOnly && accountType === "crypto");
+        if (!shouldProcess) {
+          console.log(
+            `[${account.id}] 플래그 필터에 의해 건너뜀 (type: ${accountType})`,
+          );
+          continue;
+        }
+      }
+
+      // 5. 계정의 type에 따라 해당 로직 실행
       const accountResults = [];
 
-      for (const type of accountTypes) {
-        if (type === "domestic") {
-          console.log(`\n[${account.id}] 국내주식 처리 시작...`);
-          try {
-            const domesticResult = await processStock(
-              "domestic",
-              "국내주식",
-              baseUrl,
-              accountAccessToken,
-              clubId,
-            );
-            accountResults.push({
-              accountId: account.id,
-              accountType: type,
-              ...domesticResult,
-            });
-          } catch (error) {
-            console.error(`[${account.id}] 국내주식 처리 실패:`, error);
-            accountResults.push({
-              accountId: account.id,
-              accountType: type,
-              success: false,
-              type: "stock",
-              name: "국내주식",
-              stockType: "domestic",
-              error: error.message,
-            });
-          }
-        } else if (type === "world") {
-          console.log(`\n[${account.id}] 미국주식 처리 시작...`);
-          try {
-            const worldResult = await processStock(
-              "world",
-              "미국주식",
-              baseUrl,
-              accountAccessToken,
-              clubId,
-            );
-            accountResults.push({
-              accountId: account.id,
-              accountType: type,
-              ...worldResult,
-            });
-          } catch (error) {
-            console.error(`[${account.id}] 미국주식 처리 실패:`, error);
-            accountResults.push({
-              accountId: account.id,
-              accountType: type,
-              success: false,
-              type: "stock",
-              name: "미국주식",
-              stockType: "world",
-              error: error.message,
-            });
-          }
-        } else if (type === "crypto") {
-          console.log(`\n[${account.id}] 크립토 처리 시작...`);
-          try {
-            const cryptoResult = await processCrypto(
-              baseUrl,
-              accountAccessToken,
-              clubId,
-            );
-            accountResults.push({
-              accountId: account.id,
-              accountType: type,
-              ...cryptoResult,
-            });
-          } catch (error) {
-            console.error(`[${account.id}] 크립토 처리 실패:`, error);
-            accountResults.push({
-              accountId: account.id,
-              accountType: type,
-              success: false,
-              type: "crypto",
-              name: "크립토",
-              error: error.message,
-            });
-          }
-        } else {
-          console.error(`[${account.id}] 알 수 없는 타입: ${type}`);
+      if (accountType === "domestic") {
+        console.log(`\n[${account.id}] 국내주식 처리 시작...`);
+        try {
+          const domesticResult = await processStock(
+            "domestic",
+            "국내주식",
+            baseUrl,
+            accountAccessToken,
+            clubId,
+          );
           accountResults.push({
             accountId: account.id,
-            accountType: type,
+            accountType: accountType,
+            ...domesticResult,
+          });
+        } catch (error) {
+          console.error(`[${account.id}] 국내주식 처리 실패:`, error);
+          accountResults.push({
+            accountId: account.id,
+            accountType: accountType,
             success: false,
-            error: `알 수 없는 타입: ${type}`,
+            type: "stock",
+            name: "국내주식",
+            stockType: "domestic",
+            error: error.message,
           });
         }
-
-        // 타입 간 전환 시 딜레이 (마지막 타입이 아니면 25초 대기)
-        if (accountTypes.indexOf(type) < accountTypes.length - 1) {
-          console.log(
-            `\n[${account.id}] 다음 타입으로 넘어가기 전 25초 대기...`,
+      } else if (accountType === "world") {
+        console.log(`\n[${account.id}] 미국주식 처리 시작...`);
+        try {
+          const worldResult = await processStock(
+            "world",
+            "미국주식",
+            baseUrl,
+            accountAccessToken,
+            clubId,
           );
-          await new Promise((resolve) => setTimeout(resolve, 25000));
+          accountResults.push({
+            accountId: account.id,
+            accountType: accountType,
+            ...worldResult,
+          });
+        } catch (error) {
+          console.error(`[${account.id}] 미국주식 처리 실패:`, error);
+          accountResults.push({
+            accountId: account.id,
+            accountType: accountType,
+            success: false,
+            type: "stock",
+            name: "미국주식",
+            stockType: "world",
+            error: error.message,
+          });
         }
+      } else if (accountType === "crypto") {
+        console.log(`\n[${account.id}] 크립토 처리 시작...`);
+        try {
+          const cryptoResult = await processCrypto(
+            baseUrl,
+            accountAccessToken,
+            clubId,
+          );
+          accountResults.push({
+            accountId: account.id,
+            accountType: accountType,
+            ...cryptoResult,
+          });
+        } catch (error) {
+          console.error(`[${account.id}] 크립토 처리 실패:`, error);
+          accountResults.push({
+            accountId: account.id,
+            accountType: accountType,
+            success: false,
+            type: "crypto",
+            name: "크립토",
+            error: error.message,
+          });
+        }
+      } else {
+        console.error(`[${account.id}] 알 수 없는 타입: ${accountType}`);
+        accountResults.push({
+          accountId: account.id,
+          accountType: accountType,
+          success: false,
+          error: `알 수 없는 타입: ${accountType}`,
+        });
       }
 
       allResults.push(...accountResults);
