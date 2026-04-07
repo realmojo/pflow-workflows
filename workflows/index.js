@@ -123,7 +123,7 @@ function shuffleArray(array) {
  * 상위 20개 주식 목록 가져오기
  */
 async function getTop20Stocks(stockType, baseUrl) {
-  const url = `${baseUrl}/api/getFavoriteList?type=${stockType}&size=20`;
+  const url = `${baseUrl}/api/getFavoriteList?type=${stockType}&size=100`;
 
   console.log(`[${stockType}] 상위 20개 주식 목록 가져오기: ${url}`);
 
