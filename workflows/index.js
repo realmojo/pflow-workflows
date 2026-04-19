@@ -120,12 +120,13 @@ function shuffleArray(array) {
 }
 
 /**
- * 상위 20개 주식 목록 가져오기
+ * 상위 주식 목록 가져오기 (국내: 100개, 미국: 20개)
  */
 async function getTop20Stocks(stockType, baseUrl) {
-  const url = `${baseUrl}/api/getFavoriteList?type=${stockType}&size=100`;
+  const size = stockType === "usa" ? 20 : 100;
+  const url = `${baseUrl}/api/getFavoriteList?type=${stockType}&size=${size}`;
 
-  console.log(`[${stockType}] 상위 20개 주식 목록 가져오기: ${url}`);
+  console.log(`[${stockType}] 상위 ${size}개 주식 목록 가져오기: ${url}`);
 
   const response = await fetch(url, {
     method: "GET",
