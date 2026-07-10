@@ -34,7 +34,7 @@ jobs:
       - name: 네이버 카페 자동 게시 실행
         working-directory: ./workflows
         env:
-          PFLOW_BASE_URL: ${{ secrets.PFLOW_BASE_URL || 'https://pflow.app' }}
+          PFLOW_BASE_URL: ${{ secrets.PFLOW_BASE_URL || 'https://pflowmoney.com' }}
           # 필요한 다른 환경 변수들도 여기에 추가
           # 예: NAVER_CLIENT_ID, NAVER_CLIENT_SECRET 등
         run: |

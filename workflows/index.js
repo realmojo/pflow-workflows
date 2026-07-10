@@ -8,7 +8,7 @@
 
 // 환경 변수 설정 (로컬 테스트용)
 // 로컬에서 테스트하려면: PFLOW_BASE_URL=http://localhost:3000
-const baseUrl = "https://pflow.app";
+const baseUrl = "https://pflowmoney.com";
 
 const accounts = [
   {
@@ -289,10 +289,10 @@ async function postToNaverCafe(
 
   // 가격 차트 이미지 추가 (HTML 태그는 그대로 유지)
   // 이미지 태그가 문제를 일으킬 수 있으므로 환경 변수로 제어 가능
-  // const originalImageUrl = "https://pflow.app/images/naver-cafe.png";
+  // const originalImageUrl = "https://pflowmoney.com/images/naver-cafe.png";
   // // 네이버 카페 썸네일 서버 형식으로 변환 (원본 URL을 인코딩)
   // const encodedImageUrl = encodeURIComponent(originalImageUrl);
-  // const chartImageUrl = `<div style='text-align:center;width:100%;margin:30px 0px 10px 0px;'><a href='https://pflow.app' target='_blank'><img src='https://dthumb-phinf.pstatic.net/?src=${encodedImageUrl}&amp;type=cafe_wa800' class='article_img ATTACH_IMAGE' alt='' data-index='0'></a></div>`;
+  // const chartImageUrl = `<div style='text-align:center;width:100%;margin:30px 0px 10px 0px;'><a href='https://pflowmoney.com' target='_blank'><img src='https://dthumb-phinf.pstatic.net/?src=${encodedImageUrl}&amp;type=cafe_wa800' class='article_img ATTACH_IMAGE' alt='' data-index='0'></a></div>`;
 
   // 네이버 카페 API 명세: UTF-8로 encode 후 MS949로 재 encode
   // FormData를 사용할 때는 encodeURIComponent로 URL 인코딩
