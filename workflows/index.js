@@ -8,7 +8,7 @@
 
 // 환경 변수 설정 (로컬 테스트용)
 // 로컬에서 테스트하려면: PFLOW_BASE_URL=http://localhost:3000
-const baseUrl = "https://pflowmoney.com";
+const baseUrl = "https://pflow.keywordegg.com";
 
 const accounts = [
   {
